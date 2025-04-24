@@ -1,0 +1,88 @@
+body {
+  font-family: 'Roboto', Arial, sans-serif;
+  margin: 0;
+  padding: 15px;
+  background: #000000;
+  color: #ffffff;
+}
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  min-height: 100vh;
+  align-items: stretch;
+}
+.left-panel, .main-window, .backup-window {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 16px;
+  padding: 25px;
+  flex: 1;
+  min-width: 250px;
+}
+.left-panel {
+  width: 25%;
+}
+.main-window {
+  width: 40%;
+  min-width: 350px;
+  flex: 2;
+}
+.backup-window {
+  width: 25%;
+}
+.logo-container {
+  text-align: center;
+  margin-bottom: 30px;
+}
+.logo {
+  max-width: 200px;
+  height: auto;
+}
+h1, h2 {
+  color: #000000;
+  margin-bottom: 25px;
+  font-weight: 700;
+  text-align: center;
+}
+.button-group {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+.history-list {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 2px solid rgba(30, 144, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 0;
+  list-style: none;
+}
+.history-list li {
+  padding: 12px 15px;
+  border-bottom: 1px solid rgba(30, 144, 255, 0.2);
+  cursor: pointer;
+  color: #000000;
+}
+.history-list li:hover {
+  background: rgba(30, 144, 255, 0.1);
+}
+.author-info {
+  margin-top: 20px;
+  padding-top: 10px;
+  border-top: 1px solid #eee;
+  font-size: 0.9em;
+  color: #666;
+  text-align: center;
+}
+@media (max-width: 1200px) {
+  .container {
+    flex-direction: column;
+  }
+  .left-panel, .main-window, .backup-window {
+    width: 100%;
+    min-width: auto;
+  }
+}
