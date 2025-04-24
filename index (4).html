@@ -3,114 +3,953 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Умная анкета</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@skbkontur/react-ui@4.3.0/styles.css">
+  <title>Советник по Контур.Фокус</title>
+  <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@skbkontur/react-ui@4.3.0/dist/react-ui.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@skbkontur/react-ui@4.3.0/dist/react-ui.css">
+  <script src="https://cdn.jsdelivr.net/npm/axios@1.6.7/dist/axios.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/babel-standalone@7.22.10/babel.min.js"></script>
   <style>
-    body { font-family: 'Segoe UI', Tahoma, sans-serif; padding: 20px; }
-    .container { max-width: 800px; margin: 0 auto; }
-    .question { margin-bottom: 20px; }
-    .recommendations { background: #f5f5f5; padding: 15px; border-radius: 5px; }
+    body {
+      font-family: 'Roboto', Arial, sans-serif;
+      margin: 0;
+      padding: 15px;
+      background: #000000;
+      color: #ffffff;
+    }
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      min-height: 100vh;
+      align-items: stretch;
+    }
+    .left-panel, .main-window, .backup-window {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 16px;
+      padding: 25px;
+      flex: 1;
+      min-width: 250px;
+    }
+    .left-panel {
+      width: 25%;
+    }
+    .main-window {
+      width: 40%;
+      min-width: 350px;
+      flex: 2;
+    }
+    .backup-window {
+      width: 25%;
+    }
+    .logo-container {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .logo {
+      max-width: 200px;
+      height: auto;
+    }
+    h1, h2 {
+      color: #000000;
+      margin-bottom: 25px;
+      font-weight: 700;
+      text-align: center;
+    }
+    .button-group {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    .history-list {
+      max-height: 200px;
+      overflow-y: auto;
+      border: 2px solid rgba(30, 144, 255, 0.2);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 0;
+      list-style: none;
+    }
+    .history-list li {
+      padding: 12px 15px;
+      border-bottom: 1px solid rgba(30, 144, 255, 0.2);
+      cursor: pointer;
+      color: #000000;
+    }
+    .history-list li:hover {
+      background: rgba(30, 144, 255, 0.1);
+    }
+    .author-info {
+      margin-top: 20px;
+      padding-top: 10px;
+      border-top: 1px solid #eee;
+      font-size: 0.9em;
+      color: #666;
+      text-align: center;
+    }
+    @media (max-width: 1200px) {
+      .container {
+        flex-direction: column;
+      }
+      .left-panel, .main-window, .backup-window {
+        width: 100%;
+        min-width: auto;
+      }
+    }
   </style>
 </head>
 <body>
-  <div id="root"></div>
-  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-  <script src="https://unpkg.com/@skbkontur/react-ui@4.3.0/dist/react-ui.umd.js"></script>
-  <script>
-    const { Button, Input, Select, Gapped, Modal } = window['react-ui'];
+  <div class="container">
+    <div class="left-panel">
+      <div class="logo-container">
+        <img src="https://via.placeholder.com/200x50?text=Контур.Фокус" alt="Логотип" class="logo">
+      </div>
+      <h1>Данные клиента</h1>
+      <div id="client-data"></div>
+      <h2>Демо компании</h2>
+      <div id="company-demo"></div>
+    </div>
+    <div class="main-window">
+      <h1>Советник по Контур.Фокус</h1>
+      <div id="questionnaire"></div>
+    </div>
+    <div class="backup-window">
+      <h2>Лог действий</h2>
+      <div class="button-group" id="log-buttons"></div>
+      <div id="log"></div>
+      <h2>История выборов</h2>
+      <ul class="history-list" id="history-list"></ul>
+      <div class="author-info">
+        <p>Инструмент подготовлен <a href="https://staff.skbkontur.ru/profile/gubernatorov" target="_blank">Губернаторовым Данилой Алексеевичем</a></p>
+      </div>
+    </div>
+  </div>
+  <script src="https://apis.google.com/js/api.js"></script>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+    const { Button, Input, Select, Gapped, Loader, Textarea } = ReactUI;
 
-    // Данные анкеты
-    const questionnaireData = {
-      "Директор": [
-        { id: "2.1", text: "Сколько контрагентов проверяете за месяц?", answers: ["50 и менее", "Более 50"] },
-        { id: "2.1.1", text: "Как проверяете благонадежность?", answers: ["Используем сервис", "Через открытые источники"] },
-        { id: "2.2", text: "Работаете с зарубежными компаниями?", answers: ["Нет", "Да"] },
+    // JSON-структура анкеты
+    const questionnaire = {
+      questions: [
+        {
+          id: "1",
+          text: "Должность",
+          options: [
+            { value: "Директор", next: "2", log: "Клиент — Директор" },
+            { value: "Главный бухгалтер", next: "3", log: "Клиент — Главный бухгалтер" },
+            { value: "Юрист", next: "4", log: "Клиент — Юрист" },
+            { value: "Коммерческий директор", next: "5", log: "Клиент — Коммерческий директор" },
+            { value: "СЭБ", next: "6", log: "Клиент — СЭБ" }
+          ]
+        },
+        {
+          id: "2",
+          text: "В среднем, сколько контрагентов проверяете за месяц?",
+          options: [
+            { value: "50 и менее", next: "2.2", log: "Контрагентов: 50 и менее" },
+            { value: "Более 50", next: "2.1.1", log: "Контрагентов: более 50" }
+          ]
+        },
+        {
+          id: "2.1.1",
+          text: "Как сейчас проверяете на благонадежность?",
+          options: [
+            { value: "Используем сервис", next: "2.2", recommendation: "1", log: "Используют сервис" },
+            { value: "Через открытые источники", next: "2.2", recommendation: "2", log: "Используют открытые источники" }
+          ]
+        },
+        {
+          id: "2.2",
+          text: "Работаете с зарубежными компаниями?",
+          options: [
+            { value: "Нет", next: "2.3", recommendation: "3", log: "Не работают с зарубежными компаниями" },
+            { value: "Да", next: "2.2.1", log: "Работают с зарубежными компаниями" }
+          ]
+        },
+        {
+          id: "2.2.1",
+          text: "С контрагентами из каких стран сотрудничаете?",
+          options: [
+            { value: "Беларусь/Казахстан", next: "2.3", recommendation: "4", log: "Контрагенты из Беларуси/Казахстана" },
+            { value: "Другие", next: "2.3", recommendation: "5", log: "Контрагенты из других стран" }
+          ]
+        },
+        {
+          id: "2.3",
+          text: "Как сейчас проверяете контрагентов?",
+          options: [
+            { value: "Открытые источники", next: "2.4", recommendation: "6", log: "Проверка через открытые источники" },
+            { value: "Конкурент", next: "2.3.1", log: "Используют конкурентный сервис" }
+          ]
+        },
+        {
+          id: "2.3.1",
+          text: "Какой сервис используете?",
+          options: [
+            { value: "Любой", next: "2.4", log: "Указан другой сервис" }
+          ]
+        },
+        {
+          id: "2.4",
+          text: "Полезно получать специфические сведения о контрагентах?",
+          options: [
+            { value: "Да", next: "2.5", recommendation: "20", log: "Интересуют специфические сведения" },
+            { value: "Нет", next: "2.5", log: "Не интересуют специфические сведения" }
+          ]
+        },
+        {
+          id: "2.5",
+          text: "Работаете с мелкими организациями/ИП?",
+          options: [
+            { value: "Нет", next: null, log: "Не работают с мелкими организациями/ИП" },
+            { value: "Да", next: "2.5.1", log: "Работают с мелкими организациями/ИП" }
+          ]
+        },
+        {
+          id: "2.5.1",
+          text: "Что делаете, если недостаточно информации?",
+          options: [
+            { value: "Работаем на свой страх и риск", next: null, recommendation: "8", log: "Работают на свой страх и риск" },
+            { value: "Лично едут, заказывают проверку", next: null, recommendation: "9", log: "Заказывают проверку" }
+          ]
+        },
+        {
+          id: "3",
+          text: "В среднем, сколько контрагентов проверяете за месяц?",
+          options: [
+            { value: "50 и менее", next: "3.2", log: "Контрагентов: 50 и менее" },
+            { value: "Более 50", next: "3.1.1", log: "Контрагентов: более 50" }
+          ]
+        },
+        {
+          id: "3.1.1",
+          text: "Как сейчас проверяете на благонадежность?",
+          options: [
+            { value: "Используем сервис", next: "3.2", recommendation: "1", log: "Используют сервис" },
+            { value: "Через открытые источники", next: "3.2", recommendation: "2", log: "Используют открытые источники" }
+          ]
+        },
+        {
+          id: "3.2",
+          text: "Работаете с зарубежными компаниями?",
+          options: [
+            { value: "Нет", next: "3.3", recommendation: "10", log: "Не работают с зарубежными компаниями" },
+            { value: "Да", next: "3.2.1", log: "Работают с зарубежными компаниями" }
+          ]
+        },
+        {
+          id: "3.2.1",
+          text: "Как оцениваете финансовую стабильность зарубежного партнера?",
+          options: [
+            { value: "Не оценивает/запрашивает у контрагента", next: "3.3", recommendation: "5", log: "Не оценивают фин. стабильность" },
+            { value: "Смотрим на официальных источниках стран", next: "3.3", recommendation: "5", log: "Оценивают через источники" }
+          ]
+        },
+        {
+          id: "3.3",
+          text: "Сколько новых контрагентов появляется в месяц?",
+          options: [
+            { value: "2 и менее", next: "3.4", log: "Новых контрагентов: 2 и менее" },
+            { value: "3 и более", next: "3.3.1", log: "Новых контрагентов: 3 и более" }
+          ]
+        },
+        {
+          id: "3.3.1",
+          text: "На что обращаете внимание при проверке новых контрагентов?",
+          options: [
+            { value: "Оценка только со стороны налоговых рисков", next: "3.4", recommendation: "11", log: "Оценка налоговых рисков" },
+            { value: "Проводим полноценную проверку", next: "3.4", recommendation: "12", log: "Полноценная проверка" }
+          ]
+        },
+        {
+          id: "3.4",
+          text: "Как сейчас проверяете контрагентов?",
+          options: [
+            { value: "Открытые источники", next: "3.5", recommendation: "6", log: "Проверка через открытые источники" },
+            { value: "Конкурент", next: "3.4.1", log: "Используют конкурентный сервис" }
+          ]
+        },
+        {
+          id: "3.4.1",
+          text: "Какой сервис используете?",
+          options: [
+            { value: "Любой", next: "3.5", log: "Указан другой сервис" }
+          ]
+        },
+        {
+          id: "3.5",
+          text: "Полезно получать специфические сведения о контрагентах?",
+          options: [
+            { value: "Да", next: "3.6", recommendation: "20", log: "Интересуют специфические сведения" },
+            { value: "Нет", next: "3.6", log: "Не интересуют специфические сведения" }
+          ]
+        },
+        {
+          id: "3.6",
+          text: "Работаете с мелкими организациями/ИП?",
+          options: [
+            { value: "Нет", next: null, log: "Не работают с мелкими организациями/ИП" },
+            { value: "Да", next: "3.6.1", log: "Работают с мелкими организациями/ИП" }
+          ]
+        },
+        {
+          id: "3.6.1",
+          text: "Что делаете, если недостаточно информации?",
+          options: [
+            { value: "Работаем на свой страх и риск", next: null, recommendation: "8", log: "Работают на свой страх и риск" },
+            { value: "Лично едут, заказывают проверку", next: null, recommendation: "9", log: "Заказывают проверку" }
+          ]
+        },
+        {
+          id: "4",
+          text: "Работаете с зарубежными компаниями?",
+          options: [
+            { value: "Нет", next: "4.2", recommendation: "10", log: "Не работают с зарубежными компаниями" },
+            { value: "Да", next: "4.1.1", log: "Работают с зарубежными компаниями" }
+          ]
+        },
+        {
+          id: "4.1.1",
+          text: "Как оцениваете финансовую стабильность зарубежного партнера?",
+          options: [
+            { value: "Не оценивает/запрашивает у контрагента", next: "4.2", recommendation: "5", log: "Не оценивают фин. стабильность" },
+            { value: "Смотрим на официальных источниках стран", next: "4.2", recommendation: "5", log: "Оценивают через источники" }
+          ]
+        },
+        {
+          id: "4.2",
+          text: "Сколько новых контрагентов появляется в месяц?",
+          options: [
+            { value: "2 и менее", next: "4.3", log: "Новых контрагентов: 2 и менее" },
+            { value: "3 и более", next: "4.2.1", log: "Новых контрагентов: 3 и более" }
+          ]
+        },
+        {
+          id: "4.2.1",
+          text: "На что обращаете внимание при проверке новых контрагентов?",
+          options: [
+            { value: "Оценка только со стороны налоговых рисков", next: "4.3", recommendation: "11", log: "Оценка налоговых рисков" },
+            { value: "Проводим полноценную проверку", next: "4.3", recommendation: "12", log: "Полноценная проверка" }
+          ]
+        },
+        {
+          id: "4.3",
+          text: "Как сейчас проверяете контрагентов?",
+          options: [
+            { value: "Открытые источники", next: "4.4", recommendation: "6", log: "Проверка через открытые источники" },
+            { value: "Конкурент", next: "4.3.1", log: "Используют конкурентный сервис" }
+          ]
+        },
+        {
+          id: "4.3.1",
+          text: "Какой сервис используете?",
+          options: [
+            { value: "Любой", next: "4.4", log: "Указан другой сервис" }
+          ]
+        },
+        {
+          id: "4.4",
+          text: "Полезно получать специфические сведения о контрагентах?",
+          options: [
+            { value: "Да", next: null, recommendation: "20", log: "Интересуют специфические сведения" },
+            { value: "Нет", next: null, log: "Не интересуют специфические сведения" }
+          ]
+        },
+        {
+          id: "5",
+          text: "В среднем, сколько контрагентов проверяете за месяц?",
+          options: [
+            { value: "50 и менее", next: "5.2", log: "Контрагентов: 50 и менее" },
+            { value: "Более 50", next: "5.1.1", log: "Контрагентов: более 50" }
+          ]
+        },
+        {
+          id: "5.1.1",
+          text: "Как сейчас проверяете на благонадежность?",
+          options: [
+            { value: "Используем сервис", next: "5.2", recommendation: "1", log: "Используют сервис" },
+            { value: "Через открытые источники", next: "5.2", recommendation: "2", log: "Используют открытые источники" }
+          ]
+        },
+        {
+          id: "5.2",
+          text: "Работаете с зарубежными компаниями?",
+          options: [
+            { value: "Нет", next: "5.3", recommendation: "10", log: "Не работают с зарубежными компаниями" },
+            { value: "Да", next: "5.2.1", log: "Работают с зарубежными компаниями" }
+          ]
+        },
+        {
+          id: "5.2.1",
+          text: "Как собираете пакет документов по иностранному контрагенту?",
+          options: [
+            { value: "Не собираем/запрашиваем у конкурента", next: "5.3", recommendation: "13", log: "Не собирают документы" },
+            { value: "Собираем на иностранных ресурсах", next: "5.3", recommendation: "13", log: "Собирают документы" }
+          ]
+        },
+        {
+          id: "5.3",
+          text: "Сколько новых контрагентов появляется в месяц?",
+          options: [
+            { value: "2 и менее", next: "5.4", log: "Новых контрагентов: 2 и менее" },
+            { value: "3 и более", next: "5.3.1", log: "Новых контрагентов: 3 и более" }
+          ]
+        },
+        {
+          id: "5.3.1",
+          text: "На что обращаете внимание при проверке новых контрагентов?",
+          options: [
+            { value: "Оценка только со стороны налоговых рисков", next: "5.4", recommendation: "11", log: "Оценка налоговых рисков" },
+            { value: "Проводим полноценную проверку", next: "5.4", recommendation: "12", log: "Полноценная проверка" }
+          ]
+        },
+        {
+          id: "5.4",
+          text: "Как сейчас проверяете контрагентов?",
+          options: [
+            { value: "Открытые источники", next: "5.5", recommendation: "6", log: "Проверка через открытые источники" },
+            { value: "Конкурент", next: "5.4.1", log: "Используют конкурентный сервис" }
+          ]
+        },
+        {
+          id: "5.4.1",
+          text: "Какой сервис используете?",
+          options: [
+            { value: "Любой", next: "5.5", log: "Указан другой сервис" }
+          ]
+        },
+        {
+          id: "5.5",
+          text: "Полезно получать специфические сведения о контрагентах?",
+          options: [
+            { value: "Да", next: "5.6", recommendation: "20", log: "Интересуют специфические сведения" },
+            { value: "Нет", next: "5.6", log: "Не интересуют специфические сведения" }
+          ]
+        },
+        {
+          id: "5.6",
+          text: "Работаете с мелкими организациями/ИП?",
+          options: [
+            { value: "Нет", next: null, log: "Не работают с мелкими организациями/ИП" },
+            { value: "Да", next: "5.6.1", log: "Работают с мелкими организациями/ИП" }
+          ]
+        },
+        {
+          id: "5.6.1",
+          text: "Что делаете, если недостаточно информации?",
+          options: [
+            { value: "Работаем на свой страх и риск", next: null, recommendation: "8", log: "Работают на свой страх и риск" },
+            { value: "Лично едут, заказывают проверку", next: null, recommendation: "9", log: "Заказывают проверку" }
+          ]
+        },
+        {
+          id: "6",
+          text: "В среднем, сколько контрагентов проверяете за месяц?",
+          options: [
+            { value: "50 и менее", next: "6.2", log: "Контрагентов: 50 и менее" },
+            { value: "Более 50", next: "6.1.1", log: "Контрагентов: более 50" }
+          ]
+        },
+        {
+          id: "6.1.1",
+          text: "Как сейчас проверяете на благонадежность?",
+          options: [
+            { value: "Используем сервис", next: "6.2", recommendation: "1", log: "Используют сервис" },
+            { value: "Через открытые источники", next: "6.2", recommendation: "2", log: "Используют открытые источники" }
+          ]
+        },
+        {
+          id: "6.2",
+          text: "Работаете с зарубежными компаниями?",
+          options: [
+            { value: "Нет", next: "6.3", recommendation: "10", log: "Не работают с зарубежными компаниями" },
+            { value: "Да", next: "6.2.1", log: "Работают с зарубежными компаниями" }
+          ]
+        },
+        {
+          id: "6.2.1",
+          text: "Как собираете пакет документов по иностранному контрагенту?",
+          options: [
+            { value: "Не собираем/запрашиваем у конкурента", next: "6.3", recommendation: "13", log: "Не собирают документы" },
+            { value: "Собираем на иностранных ресурсах", next: "6.3", recommendation: "13", log: "Собирают документы" }
+          ]
+        },
+        {
+          id: "6.3",
+          text: "Сколько новых контрагентов появляется в месяц?",
+          options: [
+            { value: "2 и менее", next: "6.4", log: "Новых контрагентов: 2 и менее" },
+            { value: "3 и более", next: "6.3.1", log: "Новых контрагентов: 3 и более" }
+          ]
+        },
+        {
+          id: "6.3.1",
+          text: "На что обращаете внимание при проверке новых контрагентов?",
+          options: [
+            { value: "Оценка только со стороны налоговых рисков", next: "6.4", recommendation: "11", log: "Оценка налоговых рисков" },
+            { value: "Проводим полноценную проверку", next: "6.4", recommendation: "12", log: "Полноценная проверка" }
+          ]
+        },
+        {
+          id: "6.4",
+          text: "Как сейчас проверяете контрагентов?",
+          options: [
+            { value: "Открытые источники", next: "6.5", recommendation: "6", log: "Проверка через открытые источники" },
+            { value: "Конкурент", next: "6.4.1", log: "Используют конкурентный сервис" }
+          ]
+        },
+        {
+          id: "6.4.1",
+          text: "Какой сервис используете?",
+          options: [
+            { value: "Любой", next: "6.5", log: "Указан другой сервис" }
+          ]
+        },
+        {
+          id: "6.5",
+          text: "Полезно получать специфические сведения о контрагентах?",
+          options: [
+            { value: "Да", next: "6.6", recommendation: "20", log: "Интересуют специфические сведения" },
+            { value: "Нет", next: "6.6", log: "Не интересуют специфические сведения" }
+          ]
+        },
+        {
+          id: "6.6",
+          text: "Работаете с мелкими организациями/ИП?",
+          options: [
+            { value: "Нет", next: null, log: "Не работают с мелкими организациями/ИП" },
+            { value: "Да", next: "6.6.1", log: "Работают с мелкими организациями/ИП" }
+          ]
+        },
+        {
+          id: "6.6.1",
+          text: "Что делаете, если недостаточно информации?",
+          options: [
+            { value: "Работаем на свой страх и риск", next: null, recommendation: "8", log: "Работают на свой страх и риск" },
+            { value: "Лично едут, заказывают проверку", next: null, recommendation: "9", log: "Заказывают проверку" }
+          ]
+        }
       ],
-      "Главный бухгалтер": [ /*...*/ ],
+      recommendations: {
+        "1": "Покажите клиенту аналитику списков, наблюдение",
+        "2": "Покажите клиенту сводку (все в одном месте), аналитику списков, наблюдение",
+        "3": "Покажите клиенту банкротство+банкротство ФЛ, испол. производства, арбитраж, СОЮ, СОЮ ФЛ",
+        "4": "Покажите клиенту возможности Фокуса при проверке этих стран + бизнес справки",
+        "5": "Покажите клиенту расширенные сведения",
+        "6": "Покажите клиенту СОЮ, арбитражи, отзывы на Dreamdjobs, онлайн кассы, особые реестры, выездная проверка, отчеты о проверках ФЛ",
+        "8": "Покажите клиенту выездную проверку, связи, онлайн кассы",
+        "9": "Покажите клиенту выездные проверки, отчеты по проверке ФЛ",
+        "10": "Покажите клиенту реквизитную часть, выписку ЕГРЮЛ + выписку на историческую дату, банковские счета, финансы, сотрудники",
+        "11": "Покажите клиенту экспресс отчет, маркеры, особые реестры, заявления, раздел финансы",
+        "12": "Покажите то, что озвучил бухгалтер + аналитику списков, отчет ФЛ, скоринг",
+        "13": "Покажите клиенту бизнес-справки, выездные проверки по Беларуси и Казахстану",
+        "20": "Покажите клиенту банковские счета, СОЮ ФЛ, банкротство ФЛ, исполнительные производства ИП",
+        "15": "Покажите клиенту: финансы, связи и аналитику, проверку ФЛ, особые реестры",
+        "16": "Покажите клиенту: реквизитную часть, банковские счета, выписку ЕГРЮЛ на историческую дату, финансы, ЭО",
+        "17": "Покажите клиенту: арбитраж, СОЮ, намерения о банкротстве, банкротство, проверку ФЛ, наблюдение",
+        "18": "Покажите клиенту: финансы, онлайн кассы, проверка ФЛ, наблюдение, скоринг, пульс-индекс",
+        "19": "Покажите клиенту: аналитику списков и аналитику связей, скоринг, расширенные сведения"
+      },
+      defaultRecommendations: {
+        "Директор": "15",
+        "Главный бухгалтер": "16",
+        "Юрист": "17",
+        "Коммерческий директор": "18",
+        "СЭБ": "19"
+      }
     };
 
-    const recommendations = {
-      "1": "Покажите клиенту аналитику списков, наблюдение",
-      "2": "Покажите клиенту сводку (все в одном месте), аналитику списков, наблюдение",
-      // ... остальные рекомендации
+    // Мок-данные для ПАО "ХАБСУДМАШ"
+    const mockCompanyData = {
+      inn: "2702010074",
+      name: "ПАО ХАБСУДМАШ",
+      details: {
+        requisites: "ИНН: 2702010074, ОГРН: 1022700000012, Адрес: Хабаровск, ул. Ленина, 10",
+        bankAccounts: "Счета в банках: Сбербанк, ВТБ",
+        arbitrations: "3 арбитражных дела",
+        finances: "Выручка: 500 млн руб."
+      }
     };
 
-    const App = () => {
-      const [managerName, setManagerName] = React.useState("");
-      const [currentRole, setCurrentRole] = React.useState(null);
-      const [currentQuestionIndex, setCurrentQuestionIndex] = React.useState(0);
-      const [answers, setAnswers] = React.useState({});
-      const [mode, setMode] = React.useState("linear"); // 'linear' или 'manual'
-      const [showRecommendations, setShowRecommendations] = React.useState(false);
-      const [analytics, setAnalytics] = React.useState([]);
+    // Компонент для данных клиента
+    const ClientData = ({ lprName, setLprName, companyName, setCompanyName, managerName, setManagerName, saveClientData }) => (
+      <Gapped vertical gap={20}>
+        <div>
+          <label>Имя ЛПР:</label>
+          <Input value={lprName} onValueChange={setLprName} placeholder="Введите имя ЛПР" />
+        </div>
+        <div>
+          <label>Название компании:</label>
+          <Input value={companyName} onValueChange={setCompanyName} placeholder="Введите название" />
+        </div>
+        <div>
+          <label>Имя менеджера:</label>
+          <Input value={managerName} onValueChange={setManagerName} placeholder="Введите имя менеджера" />
+        </div>
+        <Button use="primary" onClick={saveClientData}>Сохранить в лог</Button>
+      </Gapped>
+    );
 
-      const logAction = (question, answer) => {
-        setAnalytics(prev => [...prev, {
+    // Компонент для демо компании
+    const CompanyDemo = () => (
+      <div>
+        <p><strong>ИНН:</strong> {mockCompanyData.inn}</p>
+        <p><strong>Название:</strong> {mockCompanyData.name}</p>
+        <p><strong>Реквизиты:</strong> {mockCompanyData.details.requisites}</p>
+        <p><strong>Счета:</strong> {mockCompanyData.details.bankAccounts}</p>
+        <p><strong>Арбитражи:</strong> {mockCompanyData.details.arbitrations}</p>
+        <p><strong>Финансы:</strong> {mockCompanyData.details.finances}</p>
+      </div>
+    );
+
+    // Компонент анкеты
+    const Questionnaire = ({ mode, setMode, currentQuestionId, setCurrentQuestionId, answers, setAnswers, recommendations, setRecommendations, analytics, setAnalytics, history, setHistory, choiceHistory, setChoiceHistory, goBack }) => {
+      const getQuestion = (id) => questionnaire.questions.find(q => q.id === id);
+
+      const handleAnswer = (questionId, answer, option) => {
+        setAnswers(prev => ({ ...prev, [questionId]: answer }));
+        if (option.recommendation) {
+          setRecommendations(prev => [...new Set([...prev, option.recommendation])]);
+        }
+        const analyticEntry = {
           timestamp: new Date().toISOString(),
           manager: managerName,
-          question,
-          answer,
-        }]);
+          question: getQuestion(questionId).text,
+          answer: answer
+        };
+        setAnalytics(prev => [...prev, analyticEntry]);
+        setHistory(prev => [...prev, currentQuestionId]);
+        setChoiceHistory(prev => [...prev, { questionId, answer, next: option.next, log: option.log }]);
+        setLogEntries(prev => [...prev, option.log]);
+        if (option.next) {
+          setCurrentQuestionId(option.next);
+        } else if (recommendations.length === 0 && answers["1"]) {
+          const position = answers["1"];
+          const defaultRec = questionnaire.defaultRecommendations[position];
+          if (defaultRec) {
+            setRecommendations([defaultRec]);
+            setAnalytics(prev => [...prev, {
+              timestamp: new Date().toISOString(),
+              manager: managerName,
+              question: "Default Recommendation",
+              answer: questionnaire.recommendations[defaultRec]
+            }]);
+            setLogEntries(prev => [...prev, `Default Recommendation: ${questionnaire.recommendations[defaultRec]}`]);
+          }
+        }
       };
 
-      const exportToCSV = () => {
-        const csvContent = "data:text/csv;charset=utf-8," 
-          + analytics.map(a => `${a.timestamp},${a.manager},${a.question},${a.answer}`).join("\n");
-        const link = document.createElement("a");
-        link.setAttribute("href", encodeURI(csvContent));
-        link.setAttribute("download", `analytics_${managerName}_${new Date().toISOString()}.csv`);
-        document.body.appendChild(link);
-        link.click();
-      };
+      const renderLinearMode = () => {
+        const question = getQuestion(currentQuestionId);
+        if (!question) return <div>Анкета завершена!</div>;
 
-      const handleSubmit = () => {
-        setShowRecommendations(true);
-        exportToCSV(); // Автоматический экспорт при завершении
-      };
-
-      return (
-        <div className="container">
-          <h1>Умная анкета</h1>
-          {!managerName ? (
-            <div>
-              <Input placeholder="Ваше имя" value={managerName} onChange={(e) => setManagerName(e.target.value)} />
-              <Button onClick={() => logAction("Начало анкеты", `Менеджер: ${managerName}`)}>Далее</Button>
-            </div>
-          ) : !currentRole ? (
-            <div>
-              <h3>Выберите должность клиента:</h3>
-              <Gapped vertical>
-                {Object.keys(questionnaireData).map(role => (
-                  <Button key={role} onClick={() => setCurrentRole(role)}>{role}</Button>
-                ))}
-              </Gapped>
-            </div>
-          ) : showRecommendations ? (
-            <div className="recommendations">
-              <h2>Рекомендации для {currentRole}</h2>
+        return (
+          <Gapped vertical gap={20}>
+            <div style={{ padding: '20px', background: 'rgba(255, 255, 255, 0.9)', borderRadius: '8px' }}>{question.text}</div>
+            {question.options.map(option => (
+              <Button
+                key={option.value}
+                use="primary"
+                onClick={() => handleAnswer(question.id, option.value, option)}
+              >
+                {option.value}
+              </Button>
+            ))}
+            <Button use="default" onClick={goBack} disabled={history.length === 0}>Назад</Button>
+            <h2>Рекомендации</h2>
+            {recommendations.length > 0 ? (
               <ul>
-                {Object.values(answers).map((recId, i) => (
-                  <li key={i}>{recommendations[recId] || "Нет рекомендаций"}</li>
+                {recommendations.map(rec => (
+                  <li key={rec}>{questionnaire.recommendations[rec]}</li>
                 ))}
               </ul>
-              <Button onClick={() => window.location.reload()}>Новая анкета</Button>
+            ) : (
+              <p>Рекомендаций пока нет</p>
+            )}
+          </Gapped>
+        );
+      };
+
+      const renderManualMode = () => (
+        <Gapped vertical gap={20}>
+          {questionnaire.questions.map(question => (
+            <div key={question.id}>
+              <h4>{question.text}</h4>
+              <Select
+                items={question.options.map(opt => [opt.value, opt.value])}
+                value={answers[question.id] || ""}
+                onValueChange={value => {
+                  const option = question.options.find(opt => opt.value === value);
+                  if (option) handleAnswer(question.id, value, option);
+                }}
+              />
             </div>
+          ))}
+          <h2>Рекомендации</h2>
+          {recommendations.length > 0 ? (
+            <ul>
+              {recommendations.map(rec => (
+                <li key={rec}>{questionnaire.recommendations[rec]}</li>
+              ))}
+            </ul>
           ) : (
-            <div>
-              <h3>Режим: {mode === "linear" ? "Линейный" : "Ручной"}</h3>
-              <Button onClick={() => setMode(mode === "linear" ? "manual" : "linear")}>
-                Переключить на {mode === "linear" ? "ручной" : "линейный"}
-              </Button>
-              {/* Логика анкеты... */}
-              <Button onClick={handleSubmit}>Завершить</Button>
-            </div>
+            <p>Рекомендаций пока нет</p>
           )}
-        </div>
+        </Gapped>
+      );
+
+      return (
+        <Gapped vertical gap={20}>
+          <Gapped gap={10}>
+            <Button use={mode === "linear" ? "primary" : "default"} onClick={() => setMode("linear")}>Линейный режим</Button>
+            <Button use={mode === "manual" ? "primary" : "default"} onClick={() => setMode("manual")}>Ручной режим</Button>
+          </Gapped>
+          {mode === "linear" ? renderLinearMode() : renderManualMode()}
+        </Gapped>
       );
     };
 
-    ReactDOM.render(<App />, document.getElementById("root"));
+    // Компонент лога
+    const Log = ({ logEntries, copyLog, clearLog, sendToGoogleSheets, loading }) => (
+      <Gapped vertical gap={20}>
+        <Gapped gap={10}>
+          <Button use="primary" onClick={copyLog}>Скопировать лог</Button>
+          <Button use="primary" onClick={clearLog}>Очистить лог</Button>
+          <Button use="primary" onClick={sendToGoogleSheets} disabled={loading}>
+            {loading ? <Loader /> : "Отправить в Google Таблицы"}
+          </Button>
+        </Gapped>
+        <Textarea value={logEntries.join("\n")} readOnly style={{ minHeight: '200px' }} />
+      </Gapped>
+    );
+
+    // Главный компонент
+    const App = () => {
+      const [lprName, setLprName] = useState("");
+      const [companyName, setCompanyName] = useState("");
+      const [managerName, setManagerName] = useState("");
+      const [mode, setMode] = useState("linear");
+      const [currentQuestionId, setCurrentQuestionId] = useState("1");
+      const [answers, setAnswers] = useState({});
+      const [recommendations, setRecommendations] = useState([]);
+      const [analytics, setAnalytics] = useState([]);
+      const [logEntries, setLogEntries] = useState([]);
+      const [history, setHistory] = useState([]);
+      const [choiceHistory, setChoiceHistory] = useState([]);
+      const [loading, setLoading] = useState(false);
+      const [gapiReady, setGapiReady] = useState(false);
+
+      // Инициализация Google API
+      useEffect(() => {
+        window.gapi.load('client', () => {
+          window.gapi.client.init({
+            discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4']
+          }).then(() => {
+            setGapiReady(true);
+          }).catch(error => {
+            console.error('Ошибка инициализации Google API:', error);
+            alert('Ошибка инициализации Google API');
+          });
+        });
+      }, []);
+
+      const saveClientData = () => {
+        const clientData = [];
+        if (lprName || companyName || managerName) {
+          clientData.push("--- Данные клиента ---");
+          if (lprName) clientData.push(`Имя ЛПР: ${lprName}`);
+          if (companyName) clientData.push(`Название компании: ${companyName}`);
+          if (managerName) clientData.push(`Имя менеджера: ${managerName}`);
+          setLogEntries(prev => [...clientData, ...prev]);
+          setAnalytics(prev => [...prev, {
+            timestamp: new Date().toISOString(),
+            manager: managerName,
+            question: "Данные клиента",
+            answer: clientData.join(", ")
+          }]);
+          setLprName("");
+          setCompanyName("");
+          setManagerName("");
+          alert("Данные клиента сохранены в лог!");
+        } else {
+          alert("Заполните хотя бы одно поле!");
+        }
+      };
+
+      const copyLog = () => {
+        const logText = logEntries.join("\n");
+        navigator.clipboard.writeText(logText).then(() => alert("Лог скопирован!"));
+      };
+
+      const clearLog = () => {
+        setLogEntries([]);
+        setChoiceHistory([]);
+        setHistory([]);
+        setAnswers({});
+        setRecommendations([]);
+        setCurrentQuestionId("1");
+        alert("Лог и история очищены!");
+      };
+
+      const sendToGoogleSheets = () => {
+        if (!managerName) {
+          alert("Введите имя менеджера!");
+          return;
+        }
+        if (!gapiReady) {
+          alert("Google API не инициализирован!");
+          return;
+        }
+        setLoading(true);
+
+        // Замените на ваш JSON-ключ сервисного аккаунта
+        const serviceAccountKey = {
+          "type": "service_account",
+          "project_id": "YOUR_PROJECT_ID",
+          "private_key_id": "YOUR_PRIVATE_KEY_ID",
+          "private_key": "-----BEGIN PRIVATE KEY-----\nYOUR_PRIVATE_KEY\n-----END PRIVATE KEY-----\n",
+          "client_email": "YOUR_CLIENT_EMAIL",
+          "client_id": "YOUR_CLIENT_ID",
+          "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+          "token_uri": "https://oauth2.googleapis.com/token",
+          "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+          "client_x509_cert_url": "YOUR_CLIENT_X509_CERT_URL"
+        };
+
+        // Формируем JWT-токен для авторизации
+        const jwtClient = new window.google.auth.JWT(
+          serviceAccountKey.client_email,
+          null,
+          serviceAccountKey.private_key,
+          ['https://www.googleapis.com/auth/spreadsheets']
+        );
+
+        jwtClient.authorize((err) => {
+          if (err) {
+            console.error('Ошибка авторизации:', err);
+            alert('Ошибка авторизации Google Sheets');
+            setLoading(false);
+            return;
+          }
+
+          // Подготовка данных для записи
+          const values = [
+            ['Менеджер', 'Время', 'Вопрос', 'Ответ'],
+            ...analytics.map(a => [a.manager, a.timestamp, a.question, a.answer]),
+            ['Рекомендации', '', '', ''],
+            ...recommendations.map(r => ['', '', r, questionnaire.recommendations[r]])
+          ];
+
+          // Запись в Google Таблицу
+          window.gapi.client.sheets.spreadsheets.values.append({
+            spreadsheetId: 'YOUR_SPREADSHEET_ID', // Замените на ID вашей Google Таблицы
+            range: 'Sheet1!A1',
+            valueInputOption: 'RAW',
+            resource: {
+              values: values
+            }
+          }).then(() => {
+            alert('Аналитика отправлена в Google Таблицы!');
+            setLoading(false);
+          }).catch(error => {
+            console.error('Ошибка записи:', error);
+            alert('Ошибка записи в Google Таблицы');
+            setLoading(false);
+          });
+        });
+      };
+
+      const goBack = () => {
+        if (history.length > 0) {
+          const lastQuestionId = history.pop();
+          const lastChoice = choiceHistory.pop();
+          setCurrentQuestionId(lastQuestionId);
+          setLogEntries(prev => prev.slice(0, -1));
+          setAnalytics(prev => prev.slice(0, -1));
+          setChoiceHistory([...choiceHistory]);
+          setHistory([...history]);
+          setRecommendations(prev => prev.filter(rec => !lastChoice || !lastChoice.recommendation || rec !== lastChoice.recommendation));
+        }
+      };
+
+      const revertToHistory = (index) => {
+        const targetChoice = choiceHistory[index];
+        setCurrentQuestionId(targetChoice.next);
+        setLogEntries(prev => prev.slice(0, index + 1));
+        setAnalytics(prev => prev.slice(0, index + 1));
+        setChoiceHistory(prev => prev.slice(0, index + 1));
+        setHistory(prev => prev.slice(0, index));
+        setRecommendations(prev => {
+          const newRecs = [];
+          choiceHistory.slice(0, index + 1).forEach(choice => {
+            const question = questionnaire.questions.find(q => q.id === choice.questionId);
+            const option = question.options.find(opt => opt.value === choice.answer);
+            if (option.recommendation) newRecs.push(option.recommendation);
+          });
+          return [...new Set(newRecs)];
+        });
+      };
+
+      return (
+        <>
+          <div id="client-data">
+            <ClientData
+              lprName={lprName}
+              setLprName={setLprName}
+              companyName={companyName}
+              setCompanyName={setCompanyName}
+              managerName={managerName}
+              setManagerName={setManagerName}
+              saveClientData={saveClientData}
+            />
+          </div>
+          <div id="company-demo">
+            <CompanyDemo />
+          </div>
+          <div id="questionnaire">
+            <Questionnaire
+              mode={mode}
+              setMode={setMode}
+              currentQuestionId={currentQuestionId}
+              setCurrentQuestionId={setCurrentQuestionId}
+              answers={answers}
+              setAnswers={setAnswers}
+              recommendations={recommendations}
+              setRecommendations={setRecommendations}
+              analytics={analytics}
+              setAnalytics={setAnalytics}
+              history={history}
+              setHistory={setHistory}
+              choiceHistory={choiceHistory}
+              setChoiceHistory={setChoiceHistory}
+              goBack={goBack}
+            />
+          </div>
+          <div id="log-buttons">
+            <Log
+              logEntries={logEntries}
+              copyLog={copyLog}
+              clearLog={clearLog}
+              sendToGoogleSheets={sendToGoogleSheets}
+              loading={loading}
+            />
+          </div>
+          <ul id="history-list">
+            {choiceHistory.map((entry, index) => (
+              <li key={index} onClick={() => revertToHistory(index)}>
+                {entry.answer} (Этап {entry.questionId})
+              </li>
+            ))}
+          </ul>
+        </>
+      );
+    };
+
+    ReactDOM.render(<App />, document.getElementById('root'));
   </script>
 </body>
 </html>
