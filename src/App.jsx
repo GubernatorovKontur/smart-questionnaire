@@ -5,6 +5,7 @@ import Questionnaire from './components/Questionnaire.jsx';
 import Log from './components/Log.jsx';
 import questionnaireData from './data/questionnaire.json';
 import { mockCompanyData } from './data/mockData.js';
+const { Button } = ReactUI;
 
 const App = () => {
   const [lprName, setLprName] = useState("");
@@ -21,6 +22,7 @@ const App = () => {
   const [loading, setLoading] = useState(false);
   const [gapiReady, setGapiReady] = useState(false);
   const [userSignedIn, setUserSignedIn] = useState(false);
+  const [authError, setAuthError] = useState(null);
 
   // Инициализация Google API и OAuth 2.0
   useEffect(() => {
@@ -35,15 +37,19 @@ const App = () => {
         const authInstance = window.gapi.auth2.getAuthInstance();
         setUserSignedIn(authInstance.isSignedIn.get());
         authInstance.isSignedIn.listen(setUserSignedIn);
+        setAuthError(null);
       }).catch(error => {
         console.error('Ошибка инициализации Google API:', error);
-        alert('Ошибка инициализации Google API');
+        setAuthError('Не удалось инициализировать Google API. Проверьте настройки cookies.');
       });
     });
   }, []);
 
   const signIn = () => {
-    window.gapi.auth2.getAuthInstance().signIn();
+    window.gapi.auth2.getAuthInstance().signIn().catch(error => {
+      console.error('Ошибка авторизации:', error);
+      setAuthError('Ошибка авторизации. Разрешите cookies для accounts.google.com.');
+    });
   };
 
   const saveClientData = () => {
@@ -84,6 +90,23 @@ const App = () => {
     alert("Лог и история очищены!");
   };
 
+  const exportToCSV = () => {
+    const csvContent = [
+      ['Менеджер', 'Время', 'Вопрос', 'Ответ'],
+      ...analytics.map(a => [a.manager, a.timestamp, a.question, a.answer]),
+      ['Рекомендации', '', '', ''],
+      ...recommendations.map(r => ['', '', r, questionnaireData.recommendations[r]])
+    ].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'analytics.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
+    alert('Данные экспортированы в CSV!');
+  };
+
   const sendToGoogleSheets = () => {
     if (!managerName) {
       alert("Введите имя менеджера!");
@@ -117,7 +140,8 @@ const App = () => {
       setLoading(false);
     }).catch(error => {
       console.error('Ошибка записи:', error);
-      alert('Ошибка записи в Google Таблицы');
+      console.log('Детали ошибки:', error.result?.error || error);
+      setAuthError('Ошибка записи в Google Таблицы. Проверьте настройки cookies или экспортируйте в CSV.');
       setLoading(false);
     });
   };
@@ -197,6 +221,11 @@ const App = () => {
       </div>
       <div className="backup-window">
         <h2>Лог действий</h2>
+        {authError && (
+          <div style={{ color: 'red', marginBottom: '10px' }}>
+            {authError} <a href="https://support.google.com/chrome/answer/114662" target="_blank">Подробнее о cookies</a>
+          </div>
+        )}
         {!userSignedIn && (
           <Button use="primary" onClick={signIn}>Авторизоваться через Google</Button>
         )}
@@ -205,6 +234,7 @@ const App = () => {
           copyLog={copyLog}
           clearLog={clearLog}
           sendToGoogleSheets={sendToGoogleSheets}
+          exportToCSV={exportToCSV}
           loading={loading}
         />
         <h2>История выборов</h2>
