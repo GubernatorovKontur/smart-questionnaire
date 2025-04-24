@@ -26,8 +26,8 @@ const App = () => {
   useEffect(() => {
     window.gapi.load('client:auth2', () => {
       window.gapi.client.init({
-        apiKey: 'YOUR_API_KEY', // Замените на ваш API-ключ
-        clientId: 'YOUR_CLIENT_ID', // Замените на ваш Client ID
+        apiKey: 'AIzaSyALZXkgHLXo9KS7zlNLryDWrJi9AkKk6Ps',
+        clientId: '186053964655-m0mijstlobs4ebn16h2oqu4hodf86tft.apps.googleusercontent.com',
         discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'],
         scope: 'https://www.googleapis.com/auth/spreadsheets'
       }).then(() => {
@@ -108,7 +108,7 @@ const App = () => {
     ];
 
     window.gapi.client.sheets.spreadsheets.values.append({
-      spreadsheetId: 'YOUR_SPREADSHEET_ID', // Замените на ID вашей Google Таблицы
+      spreadsheetId: '1R8I9VXPJ41LNzrATRDr4lCcqi159Gp5G0sbQopxU_34',
       range: 'Sheet1!A1',
       valueInputOption: 'RAW',
       resource: { values }
